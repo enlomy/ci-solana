@@ -137,6 +137,21 @@ jobs:
         if: inputs.override-solana-version == '' || inputs.override-anchor-version == ''
         id: versions
 
+      - name: "Echo parameters and env variables"
+        run: |
+          echo "Override Solana Version: ${{ inputs.override-solana-version }}"
+          echo "Override Anchor Version: ${{ inputs.override-anchor-version }}"
+          echo "Solana Version: ${{ steps.versions.outputs.solana_version }}"
+          echo "Anchor Version: ${{ steps.versions.outputs.anchor_version }}"
+          echo "Verify Version: ${{ env.SOLANA_VERIFY_VERSION }}"
+          echo "Program: ${{ inputs.program }}"
+          echo "Network: ${{ inputs.network }}"
+          echo "Deploy: ${{ inputs.deploy }}"
+          echo "Upload IDL: ${{ inputs.upload_idl }}"
+          echo "Verify: ${{ inputs.verify }}"
+          echo "Use Squads: ${{ inputs.use-squads }}"
+          echo "Priority Fee: ${{ inputs.priority-fee }}"
+
       # - uses: enlomy/ci-solana/.github/actions/setup-all@main
       #   id: setup
       #   with:
