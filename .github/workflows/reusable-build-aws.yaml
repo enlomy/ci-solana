@@ -338,7 +338,7 @@ jobs:
           fi
 
       - name: Write Program Buffer
-        uses: ./.github/actions/write-program-buffer.yaml
+        uses: ./.github/actions/write-program-buffer
         id: program-buffer
         if: inputs.deploy
         with:
