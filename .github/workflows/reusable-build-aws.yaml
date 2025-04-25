@@ -137,7 +137,7 @@ jobs:
         if: inputs.override-solana-version == '' || inputs.override-anchor-version == ''
         id: versions
 
-      - uses: solana-developers/github-actions/setup-all@v0.2.5
+      - uses: ./.github/actions/setup-all
         id: setup
         with:
           solana_version: ${{ inputs.override-solana-version != '' && inputs.override-solana-version || steps.versions.outputs.solana_version }}
