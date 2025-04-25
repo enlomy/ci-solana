@@ -99,8 +99,7 @@ runs:
             ./target/deploy/${{ inputs.program }}.so \
             --url ${{ inputs.rpc-url }} \
             --keypair ./deploy-keypair.json \
-            --with-compute-unit-price ${{ inputs.priority-fee }} \
-            --use-rpc \
+            \
             2>&1)
 
           # Print output in real-time
