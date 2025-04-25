@@ -137,26 +137,26 @@ jobs:
         if: inputs.override-solana-version == '' || inputs.override-anchor-version == ''
         id: versions
 
-      - uses: enlomy/ci-solana/.github/actions/setup-all@main
-        id: setup
-        with:
-          solana_version: ${{ inputs.override-solana-version != '' && inputs.override-solana-version || steps.versions.outputs.solana_version }}
-          anchor_version: ${{ inputs.override-anchor-version != '' && inputs.override-anchor-version || steps.versions.outputs.anchor_version }}
-          verify_version: ${{ env.SOLANA_VERIFY_VERSION }}
+      # - uses: enlomy/ci-solana/.github/actions/setup-all@main
+      #   id: setup
+      #   with:
+      #     solana_version: ${{ inputs.override-solana-version != '' && inputs.override-solana-version || steps.versions.outputs.solana_version }}
+      #     anchor_version: ${{ inputs.override-anchor-version != '' && inputs.override-anchor-version || steps.versions.outputs.anchor_version }}
+      #     verify_version: ${{ env.SOLANA_VERIFY_VERSION }}
 
-      - name: Set Program Variables from Anchor.toml
-        if: steps.check-anchor.outputs.is_anchor == 'true'
-        run: |
-          PROGRAM="${{ inputs.program || 'transaction-example' }}"
-          PROGRAM_NAME=${PROGRAM//-/_}
-          echo "Looking for program ${PROGRAM_NAME} in Anchor.toml"
-          cat ./Anchor.toml
-          echo "Running toml command:"
-          ~/.cargo/bin/toml get ./Anchor.toml programs.localnet.${PROGRAM_NAME} || true
-          PROGRAM_ID=$(~/.cargo/bin/toml get ./Anchor.toml programs.localnet.${PROGRAM_NAME} | tr -d '"')
-          echo "Program: $PROGRAM_ID"
-          echo "PROGRAM_NAME=${PROGRAM_NAME}" >> $GITHUB_ENV
-          echo "PROGRAM_ID=${PROGRAM_ID}" >> $GITHUB_ENV
+      # - name: Set Program Variables from Anchor.toml
+      #   if: steps.check-anchor.outputs.is_anchor == 'true'
+      #   run: |
+      #     PROGRAM="${{ inputs.program || 'transaction-example' }}"
+      #     PROGRAM_NAME=${PROGRAM//-/_}
+      #     echo "Looking for program ${PROGRAM_NAME} in Anchor.toml"
+      #     cat ./Anchor.toml
+      #     echo "Running toml command:"
+      #     ~/.cargo/bin/toml get ./Anchor.toml programs.localnet.${PROGRAM_NAME} || true
+      #     PROGRAM_ID=$(~/.cargo/bin/toml get ./Anchor.toml programs.localnet.${PROGRAM_NAME} | tr -d '"')
+      #     echo "Program: $PROGRAM_ID"
+      #     echo "PROGRAM_NAME=${PROGRAM_NAME}" >> $GITHUB_ENV
+      #     echo "PROGRAM_ID=${PROGRAM_ID}" >> $GITHUB_ENV
 
       - name: Set Program Variables from Cargo.toml
         if: steps.check-anchor.outputs.is_anchor == 'false'
