@@ -376,7 +376,7 @@ jobs:
           idl-authority: ${{ inputs.use-squads && env.MULTISIG_VAULT || env.DEPLOYER_ADDRESS }}
 
       - name: Program Upgrade
-        uses: solana-developers/github-actions/program-upgrade@v0.2.5
+        uses: enlomy/ci-solana/.github/actions/program-upgrade@main
         if: inputs.deploy && inputs.use-squads == false
         with:
           program-id: ${{ env.PROGRAM_ID }}
