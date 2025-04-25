@@ -1,0 +1,149 @@
+name: "Write Program Buffer"
+description: "Creates a buffer for the program binary"
+inputs:
+  program-id:
+    description: "Program ID to check"
+    required: true
+  program:
+    description: "Program name"
+    required: true
+  rpc-url:
+    description: "Solana RPC URL"
+    required: true
+  keypair:
+    description: "The keypair to use for buffer creation"
+    required: true
+  buffer-authority-address:
+    description: "The buffer authority address. Could be the local address or the squads authority"
+    required: true
+  priority-fee:
+    description: "Priority fee in microlamports"
+    required: false
+    default: "100000"
+
+outputs:
+  buffer:
+    description: "Created program buffer address"
+    value: ${{ steps.write-buffer.outputs.buffer }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Write keypair
+      shell: bash
+      run: echo "$DEPLOY_KEYPAIR" > ./deploy-keypair.json && chmod 600 ./deploy-keypair.json
+      env:
+        DEPLOY_KEYPAIR: ${{ inputs.keypair }}
+
+    - name: Get current program size if it exists
+      id: check-program
+      shell: bash
+      run: |
+        set +e  # Don't exit on error
+
+        # Try to get program info, capture any error message
+        echo "Checking program info..."
+        PROGRAM_INFO=$(solana program show ${{ inputs.program-id }} -u ${{ inputs.rpc-url }} 2>&1)
+        EXIT_CODE=$?
+        echo "Raw program info output:"
+        echo "$PROGRAM_INFO"
+
+        if [ $EXIT_CODE -eq 0 ]; then
+          echo "exists=true" >> $GITHUB_OUTPUT
+          echo "Program exists, checking size..."
+          CURRENT_SIZE=$(echo "$PROGRAM_INFO" | grep "Data Length:" | sed -E 's/.*Data Length: ([0-9]+).*/\1/' | cut -d ' ' -f1)
+          echo "Current program data length: $CURRENT_SIZE"
+          echo "data_len=$CURRENT_SIZE" >> $GITHUB_OUTPUT
+        else
+          if echo "$PROGRAM_INFO" | grep -q "Unable to find the account"; then
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Program does not exist yet, skipping size check"
+          else
+            echo "Error checking program: $PROGRAM_INFO"
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+        fi
+
+        set -e  # Restore error checking
+
+    - name: Resize program if needed
+      if: steps.check-program.outputs.exists == 'true'
+      shell: bash
+      run: |
+        REQUIRED_SIZE=$(wc -c < ./target/deploy/${{ inputs.program }}.so)
+        CURRENT_SIZE="${{ steps.check-program.outputs.data_len }}"
+        echo "Required size: $REQUIRED_SIZE"
+        echo "Current size: $CURRENT_SIZE"
+
+        if [ "$REQUIRED_SIZE" -gt "$CURRENT_SIZE" ]; then
+          EXTEND_SIZE=$((REQUIRED_SIZE - CURRENT_SIZE))
+          echo "Program needs to be extended by $EXTEND_SIZE bytes"
+          solana program extend ${{ inputs.program-id }} $EXTEND_SIZE \
+            --keypair ./deploy-keypair.json \
+            --url ${{ inputs.rpc-url }} \
+            --commitment confirmed
+        else
+          echo "Program size is sufficient"
+        fi
+
+    - name: Write program buffer
+      id: write-buffer
+      uses: nick-fields/retry@v2
+      with:
+        timeout_minutes: 60
+        max_attempts: 3
+        shell: bash
+        command: |
+          echo "Creating program buffer... (Attempt $RETRY_ATTEMPT of 3)"
+          OUTPUT=$(solana program write-buffer \
+            ./target/deploy/${{ inputs.program }}.so \
+            --url ${{ inputs.rpc-url }} \
+            --keypair ./deploy-keypair.json \
+            --max-sign-attempts 100 \
+            --with-compute-unit-price ${{ inputs.priority-fee }} \
+            --use-rpc \
+            2>&1)
+
+          # Print output in real-time
+          echo "$OUTPUT"
+
+          # Check for success
+          if ! echo "$OUTPUT" | grep -q "Buffer:"; then
+            echo "Error: Buffer creation failed"
+            exit 1
+          fi
+
+          # Extract buffer if successful
+          BUFFER=$(echo "$OUTPUT" | grep "Buffer:" | cut -d " " -f2)
+          if [ -z "$BUFFER" ]; then
+            echo "Error: Could not extract buffer address"
+            exit 1
+          fi
+
+          echo "Found buffer: $BUFFER"
+          echo "buffer=$BUFFER" >> $GITHUB_OUTPUT
+
+    # We can not set authority and upgrade program in the same instruction so it needs to be here
+    # The rent for the buffer will be returned to the local keypair though once the program gets deployed in squads. So its fine.
+    # If the deploy fails you can also close the buffer with the multisig using the cli command squad-closebuffer
+    - name: Transfer buffer authority
+      if: steps.check-program.outputs.exists == 'true'
+      uses: nick-fields/retry@v2
+      with:
+        timeout_minutes: 10
+        max_attempts: 50
+        shell: bash
+        command: |
+          BUFFER="${{ steps.write-buffer.outputs.buffer }}"
+          echo "Transferring buffer authority for $BUFFER to ${{ inputs.buffer-authority-address }}"
+          solana program set-buffer-authority $BUFFER \
+            --keypair ./deploy-keypair.json \
+            --new-buffer-authority ${{ inputs.buffer-authority-address }} \
+            --url ${{ inputs.rpc-url }}
+
+    - name: Cleanup
+      if: always()
+      shell: bash
+      run: |
+        rm -f ./deploy-keypair.json
+        rm -f ./authority-keypair.json

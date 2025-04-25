@@ -338,7 +338,7 @@ jobs:
           fi
 
       - name: Write Program Buffer
-        uses: solana-developers/github-actions/write-program-buffer@v0.2.5
+        uses: ./.github/actions/write-program-buffer.yaml
         id: program-buffer
         if: inputs.deploy
         with:
