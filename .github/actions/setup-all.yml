@@ -53,7 +53,7 @@ runs:
       shell: bash
       if: steps.cache-solana.outputs.cache-hit != 'true' && inputs.solana_version != ''
       run: |
-        echo "Installing Solana version: $VERSION"
+        echo "This is the version: $VERSION"
         # Parse version numbers
         MAJOR=$(echo $VERSION | cut -d. -f1)
         MINOR=$(echo $VERSION | cut -d. -f2)
@@ -61,9 +61,9 @@ runs:
 
         # Determine which URL to use based on version
         if [ "$MAJOR" -eq 1 ] && [ "$MINOR" -eq 18 ] && [ "$PATCH" -le 23 ]; then
-          INSTALL_URL="https://release.solana.com/v${SOLANA_VERSION}/install"
+          INSTALL_URL="https://release.solana.com/v${VERSION}/install"
         else
-          INSTALL_URL="https://release.anza.xyz/v${SOLANA_VERSION}/install"
+          INSTALL_URL="https://release.anza.xyz/v${VERSION}/install"
         fi
 
         echo "Installing Solana from: $INSTALL_URL"
